@@ -45,7 +45,7 @@ client.on("messageCreate", async (message) => {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `
-Kamu adalah AI Discord bernama SystemMonitor AI.
+Kamu adalah AI Discord bernama Prily Fitria Aziz AI.
 
 Aturan:
 - Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain.
