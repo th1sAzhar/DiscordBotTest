@@ -4,6 +4,7 @@ const path = require("path");
 const configPath = path.join(__dirname, "..", "config", "guilds.json");
 
 function init() {
+
     if (!fs.existsSync(configPath)) {
 
         fs.mkdirSync(path.dirname(configPath), {
@@ -11,16 +12,28 @@ function init() {
         });
 
         fs.writeFileSync(configPath, "{}");
+
     }
+
 }
 
 function load() {
+
     init();
-    return JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+    return JSON.parse(
+        fs.readFileSync(configPath, "utf8")
+    );
+
 }
 
 function save(data) {
-    fs.writeFileSync(configPath, JSON.stringify(data, null, 4));
+
+    fs.writeFileSync(
+        configPath,
+        JSON.stringify(data, null, 4)
+    );
+
 }
 
 function setGuildChannel(guildId, channelId) {
@@ -32,6 +45,7 @@ function setGuildChannel(guildId, channelId) {
     };
 
     save(data);
+
 }
 
 function getGuild(guildId) {
@@ -39,9 +53,23 @@ function getGuild(guildId) {
     const data = load();
 
     return data[guildId] || null;
+
+}
+
+function removeGuild(guildId) {
+
+    const data = load();
+
+    delete data[guildId];
+
+    save(data);
+
 }
 
 module.exports = {
+
+    getGuild,
     setGuildChannel,
-    getGuild
+    removeGuild
+
 };

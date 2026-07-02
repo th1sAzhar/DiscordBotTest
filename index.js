@@ -6,60 +6,52 @@ const {
     PermissionFlagsBits
 } = require("discord.js");
 
-const { GoogleGenAI } = require("@google/genai");
+const {
+    askAI
+} = require("./utils/ai");
 
 const {
-    setGuildChannel,
-    getGuild
+    getGuild,
+    setGuildChannel
 } = require("./utils/guildConfig");
 
 const {
     getUserHistory,
-    addMessage
+    addMessage,
+    clearHistory
 } = require("./utils/history");
 
 const client = new Client({
-
     intents: [
-
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
-
     ]
-
-});
-
-const ai = new GoogleGenAI({
-
-    apiKey: process.env.GEMINI_API_KEY
-
 });
 
 client.once("clientReady", () => {
-
     console.log(`✅ Login sebagai ${client.user.tag}`);
-
 });
 
 client.on("messageCreate", async (message) => {
 
     if (message.author.bot) return;
-
     if (!message.guild) return;
 
-    // =============================
-    // Setup Channel
-    // =============================
+    // ==========================
+    // Setup AI Channel
+    // ==========================
 
     if (message.content === "!setup-ai") {
 
-        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-
+        if (
+            !message.member.permissions.has(
+                PermissionFlagsBits.Administrator
+            )
+        ) {
             return message.reply(
-                "❌ Hanya Administrator yang dapat melakukan setup."
+                "❌ Hanya Administrator yang dapat menggunakan command ini."
             );
-
         }
 
         setGuildChannel(
@@ -68,26 +60,40 @@ client.on("messageCreate", async (message) => {
         );
 
         return message.reply(
-            "✅ Channel AI berhasil disimpan."
+            `✅ AI Channel berhasil disimpan.\nSekarang aku hanya akan merespon di ${message.channel}.`
         );
-
     }
 
-    // =============================
-    // Cek Config
-    // =============================
+    // ==========================
+    // Reset History
+    // ==========================
+
+    if (message.content === "!reset-ai") {
+
+        clearHistory(
+            message.guild.id,
+            message.author.id
+        );
+
+        return message.reply(
+            "🧹 Riwayat percakapan kamu berhasil dihapus."
+        );
+    }
+
+    // ==========================
+    // Cek Channel AI
+    // ==========================
 
     const guildConfig = getGuild(message.guild.id);
 
-    if (!guildConfig)
-        return;
+    if (!guildConfig) return;
 
     if (guildConfig.channelId !== message.channel.id)
         return;
 
-    // =============================
-    // Harus mention bot
-    // =============================
+    // ==========================
+    // Harus Mention Bot
+    // ==========================
 
     if (!message.mentions.has(client.user))
         return;
@@ -100,7 +106,7 @@ client.on("messageCreate", async (message) => {
     if (!prompt) {
 
         return message.reply(
-            "Halo! Ada yang ingin ditanyakan?"
+            "Halo 👋 Ada yang ingin ditanyakan?"
         );
 
     }
@@ -110,65 +116,35 @@ client.on("messageCreate", async (message) => {
         await message.channel.sendTyping();
 
         const history = getUserHistory(
-
             message.guild.id,
             message.author.id
-
         );
 
-        const historyText = history
-            .map(msg => `${msg.role}: ${msg.text}`)
-            .join("\n");
-
-        const response = await ai.models.generateContent({
-
-            model: "gemini-2.5-flash",
-
-            contents: `
-Kamu adalah AI Discord bernama Prily Fitria Aziz AI.
-
-Aturan:
-
-- Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain.
-- Santai.
-- Ramah.
-- Membantu.
-- Jangan pernah menyebut bahwa kamu adalah Gemini.
-
-Riwayat Percakapan:
-
-${historyText}
-
-User:
-
-${prompt}
-`
-
-        });
-
+        // Simpan pesan user
         addMessage(
-
             message.guild.id,
             message.author.id,
             "user",
             prompt
-
         );
 
-        addMessage(
+        // Tanya AI
+        const reply = await askAI(
+            prompt,
+            history
+        );
 
+        // Simpan jawaban AI
+        addMessage(
             message.guild.id,
             message.author.id,
             "assistant",
-            response.text
-
+            reply
         );
 
-        await message.reply(response.text);
+        await message.reply(reply);
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         console.error(err);
 
